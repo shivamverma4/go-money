@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS audit_log;
+DROP TABLE IF EXISTS ledger_entries;
+DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS accounts;
+DROP TABLE IF EXISTS customers;
+DROP TYPE IF EXISTS audit_outcome;
+DROP TYPE IF EXISTS transaction_status;
+DROP TYPE IF EXISTS transaction_type;
+DROP TYPE IF EXISTS account_status;
