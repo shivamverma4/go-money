@@ -104,5 +104,3 @@ GET  /api/customers
 **Double-entry ledger.** Every transfer writes two rows: debit from source, credit to destination. `SUM(debit) == SUM(credit)` always. Reversals write a mirrored pair. The table is append-only.
 
 **Single binary.** The Docker image bundles the compiled React app into the Go binary's static file server (`SERVE_STATIC=true`). No nginx, no separate container needed.
-
-**Not implemented:** auth, multi-currency transfers, cursor-based pagination, deposit/withdrawal endpoints.
