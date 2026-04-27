@@ -1,0 +1,43 @@
+services:
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       go_money
+      POSTGRES_USER:     go_money
+      POSTGRES_PASSWORD: go_money_secret
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"         # expose locally so you can connect with psql / pgAdmin
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U go_money -d go_money"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy   # wait until postgres is actually ready
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL:       postgres://go_money:go_money_secret@db:5432/go_money?sslmode=disable
+      PORT:               8080
+      RUN_MIGRATIONS:     "true"     # auto-apply migrations + seed on every startup
+      MIGRATIONS_PATH:    ./migrations
+      SERVE_STATIC:       "true"     # serve frontend/dist from the same process
+      STATIC_DIR:         ./frontend/dist
+      CURRENCY_CODE:      INR
+      CURRENCY_SYMBOL:    "₹"
+      CURRENCY_SUBUNIT_NAME: paise
+      CORS_ORIGINS:       http://localhost:8080
+
+volumes:
+  pg_data:
