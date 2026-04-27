@@ -11,8 +11,8 @@ const customers: Map<number, Customer> = new Map([
 ])
 
 const accounts: Account[] = [
-  { id: 1, customer_id: 1, currency: 'INR', balance_subunits: 1000000, balance_display: '₹10,000.00', status: 'active' },
-  { id: 2, customer_id: 2, currency: 'INR', balance_subunits: 500000,  balance_display: '₹5,000.00',  status: 'active' },
+  { id: 1, customer_id: 1, currency: 'INR', balance: 10000.00, balance_display: '₹10,000.00', status: 'active' },
+  { id: 2, customer_id: 2, currency: 'INR', balance: 5000.00,  balance_display: '₹5,000.00',  status: 'active' },
 ]
 
 function renderForm(refreshKey = 0, onSuccess = vi.fn()) {
@@ -67,7 +67,7 @@ describe('TransferForm', () => {
       id: 'uuid-1', type: 'transfer', status: 'completed',
       reference_id: null, reversal_of_id: null,
       from_account_id: 1, to_account_id: 2,
-      amount_subunits: 50000, amount_display: '₹500.00',
+      amount: 500.00, amount_display: '₹500.00',
       currency: 'INR', failure_reason: null, created_at: '',
     })
 
@@ -112,7 +112,7 @@ describe('TransferForm', () => {
       id: 'uuid-1', type: 'transfer', status: 'completed',
       reference_id: null, reversal_of_id: null,
       from_account_id: 1, to_account_id: 2,
-      amount_subunits: 50000, amount_display: '₹500.00',
+      amount: 500.00, amount_display: '₹500.00',
       currency: 'INR', failure_reason: null, created_at: '',
     })
 

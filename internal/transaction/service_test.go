@@ -31,7 +31,7 @@ func testDB(t *testing.T) *pgxpool.Pool {
 }
 
 // seedAccounts inserts two accounts with the given balances and returns their IDs.
-func seedAccounts(t *testing.T, pool *pgxpool.Pool, balanceA, balanceB int64) (int64, int64) {
+func seedAccounts(t *testing.T, pool *pgxpool.Pool, balanceA, balanceB float64) (int64, int64) {
 	t.Helper()
 	ctx := context.Background()
 
@@ -84,13 +84,13 @@ func newService(pool *pgxpool.Pool) *transaction.Service {
 
 func TestTransfer_HappyPath(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100000, 0)
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
 	svc := newService(pool)
 
 	result, err := svc.Transfer(context.Background(), transaction.TransferRequest{
-		FromAccountID:  idA,
-		ToAccountID:    idB,
-		AmountSubunits: 50000,
+		FromAccountID: idA,
+		ToAccountID:   idB,
+		Amount:        500.00,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -103,36 +103,36 @@ func TestTransfer_HappyPath(t *testing.T) {
 	accStore := account.NewStore(pool)
 	a, _ := accStore.GetByID(context.Background(), idA)
 	b, _ := accStore.GetByID(context.Background(), idB)
-	if a.Balance != 50000 {
-		t.Errorf("account A balance: got %d, want 50000", a.Balance)
+	if a.Balance != 500.00 {
+		t.Errorf("account A balance: got %.2f, want 500.00", a.Balance)
 	}
-	if b.Balance != 50000 {
-		t.Errorf("account B balance: got %d, want 50000", b.Balance)
+	if b.Balance != 500.00 {
+		t.Errorf("account B balance: got %.2f, want 500.00", b.Balance)
 	}
 
 	// Verify ledger invariant: 2 entries, debits == credits within the tx.
 	if len(result.Entries) != 2 {
 		t.Errorf("expected 2 ledger entries, got %d", len(result.Entries))
 	}
-	var totalDebit, totalCredit int64
+	var totalDebit, totalCredit float64
 	for _, e := range result.Entries {
 		totalDebit += e.DebitAmount
 		totalCredit += e.CreditAmount
 	}
 	if totalDebit != totalCredit {
-		t.Errorf("ledger imbalance: debit=%d credit=%d", totalDebit, totalCredit)
+		t.Errorf("ledger imbalance: debit=%.2f credit=%.2f", totalDebit, totalCredit)
 	}
 }
 
 func TestTransfer_InsufficientFunds(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 1000, 0)
+	idA, idB := seedAccounts(t, pool, 10.00, 0)
 	svc := newService(pool)
 
 	result, err := svc.Transfer(context.Background(), transaction.TransferRequest{
-		FromAccountID:  idA,
-		ToAccountID:    idB,
-		AmountSubunits: 9999,
+		FromAccountID: idA,
+		ToAccountID:   idB,
+		Amount:        99.99,
 	})
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -152,20 +152,20 @@ func TestTransfer_InsufficientFunds(t *testing.T) {
 	// Balances must be unchanged.
 	accStore := account.NewStore(pool)
 	a, _ := accStore.GetByID(context.Background(), idA)
-	if a.Balance != 1000 {
-		t.Errorf("balance changed on failure: got %d, want 1000", a.Balance)
+	if a.Balance != 10.00 {
+		t.Errorf("balance changed on failure: got %.2f, want 10.00", a.Balance)
 	}
 }
 
 func TestTransfer_SameAccount(t *testing.T) {
 	pool := testDB(t)
-	idA, _ := seedAccounts(t, pool, 100000, 0)
+	idA, _ := seedAccounts(t, pool, 1000.00, 0)
 	svc := newService(pool)
 
 	_, err := svc.Transfer(context.Background(), transaction.TransferRequest{
-		FromAccountID:  idA,
-		ToAccountID:    idA,
-		AmountSubunits: 100,
+		FromAccountID: idA,
+		ToAccountID:   idA,
+		Amount:        1.00,
 	})
 	if err == nil {
 		t.Fatal("expected error for same-account transfer")
@@ -174,13 +174,13 @@ func TestTransfer_SameAccount(t *testing.T) {
 
 func TestTransfer_ZeroAmount(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100000, 0)
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
 	svc := newService(pool)
 
 	_, err := svc.Transfer(context.Background(), transaction.TransferRequest{
-		FromAccountID:  idA,
-		ToAccountID:    idB,
-		AmountSubunits: 0,
+		FromAccountID: idA,
+		ToAccountID:   idB,
+		Amount:        0,
 	})
 	if err == nil {
 		t.Fatal("expected error for zero amount")
@@ -189,13 +189,13 @@ func TestTransfer_ZeroAmount(t *testing.T) {
 
 func TestTransfer_AccountNotFound(t *testing.T) {
 	pool := testDB(t)
-	_, idB := seedAccounts(t, pool, 100000, 0)
+	_, idB := seedAccounts(t, pool, 1000.00, 0)
 	svc := newService(pool)
 
 	_, err := svc.Transfer(context.Background(), transaction.TransferRequest{
-		FromAccountID:  999999999,
-		ToAccountID:    idB,
-		AmountSubunits: 100,
+		FromAccountID: 999999999,
+		ToAccountID:   idB,
+		Amount:        1.00,
 	})
 	if err == nil {
 		t.Fatal("expected error for missing account")
@@ -207,8 +207,8 @@ func TestTransfer_AccountNotFound(t *testing.T) {
 func TestTransfer_Concurrent(t *testing.T) {
 	pool := testDB(t)
 	const (
-		initial    = int64(1_000_000) // ₹10,000
-		perTx      = int64(1_000)     // ₹10 each
+		initial    = float64(10000.00) // ₹10,000
+		perTx      = float64(10.00)    // ₹10 each
 		goroutines = 50
 	)
 	idA, idB := seedAccounts(t, pool, initial, 0)
@@ -220,9 +220,9 @@ func TestTransfer_Concurrent(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			svc.Transfer(context.Background(), transaction.TransferRequest{
-				FromAccountID:  idA,
-				ToAccountID:    idB,
-				AmountSubunits: perTx,
+				FromAccountID: idA,
+				ToAccountID:   idB,
+				Amount:        perTx,
 			})
 		}()
 	}
@@ -233,10 +233,10 @@ func TestTransfer_Concurrent(t *testing.T) {
 	b, _ := accStore.GetByID(context.Background(), idB)
 
 	if a.Balance < 0 {
-		t.Errorf("account A went negative: %d", a.Balance)
+		t.Errorf("account A went negative: %.2f", a.Balance)
 	}
 	if a.Balance+b.Balance != initial {
-		t.Errorf("total balance not conserved: A=%d B=%d sum=%d want=%d",
+		t.Errorf("total balance not conserved: A=%.2f B=%.2f sum=%.2f want=%.2f",
 			a.Balance, b.Balance, a.Balance+b.Balance, initial)
 	}
 }
@@ -255,13 +255,13 @@ func seedInactiveAccount(t *testing.T, pool *pgxpool.Pool) (int64, int64) {
 	}
 	var activeID, inactiveID int64
 	if err := pool.QueryRow(ctx,
-		`INSERT INTO accounts (customer_id, currency, balance) VALUES ($1, 'INR', 100000) RETURNING id`,
+		`INSERT INTO accounts (customer_id, currency, balance) VALUES ($1, 'INR', 1000.00) RETURNING id`,
 		custID,
 	).Scan(&activeID); err != nil {
 		t.Fatalf("seed active account: %v", err)
 	}
 	if err := pool.QueryRow(ctx,
-		`INSERT INTO accounts (customer_id, currency, balance, status) VALUES ($1, 'INR', 100000, 'inactive') RETURNING id`,
+		`INSERT INTO accounts (customer_id, currency, balance, status) VALUES ($1, 'INR', 1000.00, 'inactive') RETURNING id`,
 		custID,
 	).Scan(&inactiveID); err != nil {
 		t.Fatalf("seed inactive account: %v", err)
@@ -282,9 +282,9 @@ func TestTransfer_InactiveSourceAccount(t *testing.T) {
 	svc := newService(pool)
 
 	_, err := svc.Transfer(context.Background(), transaction.TransferRequest{
-		FromAccountID:  inactiveID,
-		ToAccountID:    activeID,
-		AmountSubunits: 100,
+		FromAccountID: inactiveID,
+		ToAccountID:   activeID,
+		Amount:        1.00,
 	})
 	if err == nil {
 		t.Fatal("expected error for inactive source account")
@@ -304,9 +304,9 @@ func TestTransfer_InactiveDestinationAccount(t *testing.T) {
 	svc := newService(pool)
 
 	_, err := svc.Transfer(context.Background(), transaction.TransferRequest{
-		FromAccountID:  activeID,
-		ToAccountID:    inactiveID,
-		AmountSubunits: 100,
+		FromAccountID: activeID,
+		ToAccountID:   inactiveID,
+		Amount:        1.00,
 	})
 	if err == nil {
 		t.Fatal("expected error for inactive destination account")
@@ -322,13 +322,13 @@ func TestTransfer_InactiveDestinationAccount(t *testing.T) {
 
 func TestTransfer_NegativeAmount(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100000, 0)
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
 	svc := newService(pool)
 
 	_, err := svc.Transfer(context.Background(), transaction.TransferRequest{
-		FromAccountID:  idA,
-		ToAccountID:    idB,
-		AmountSubunits: -500,
+		FromAccountID: idA,
+		ToAccountID:   idB,
+		Amount:        -5.00,
 	})
 	if err == nil {
 		t.Fatal("expected error for negative amount")
@@ -337,13 +337,13 @@ func TestTransfer_NegativeAmount(t *testing.T) {
 
 func TestTransfer_AuditLogOnSuccess(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100000, 0)
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
 	svc := newService(pool)
 
 	result, err := svc.Transfer(context.Background(), transaction.TransferRequest{
-		FromAccountID:  idA,
-		ToAccountID:    idB,
-		AmountSubunits: 10000,
+		FromAccountID: idA,
+		ToAccountID:   idB,
+		Amount:        100.00,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -364,13 +364,13 @@ func TestTransfer_AuditLogOnSuccess(t *testing.T) {
 
 func TestTransfer_AuditLogOnFailure(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100, 0)
+	idA, idB := seedAccounts(t, pool, 1.00, 0)
 	svc := newService(pool)
 
 	result, _ := svc.Transfer(context.Background(), transaction.TransferRequest{
-		FromAccountID:  idA,
-		ToAccountID:    idB,
-		AmountSubunits: 9999,
+		FromAccountID: idA,
+		ToAccountID:   idB,
+		Amount:        99.99,
 	})
 
 	var count int
@@ -388,14 +388,14 @@ func TestTransfer_AuditLogOnFailure(t *testing.T) {
 
 func TestTransfer_LedgerBalanceConservation(t *testing.T) {
 	pool := testDB(t)
-	const initial = int64(500000)
+	const initial = float64(5000.00)
 	idA, idB := seedAccounts(t, pool, initial, 0)
 	svc := newService(pool)
 
 	result, err := svc.Transfer(context.Background(), transaction.TransferRequest{
-		FromAccountID:  idA,
-		ToAccountID:    idB,
-		AmountSubunits: 200000,
+		FromAccountID: idA,
+		ToAccountID:   idB,
+		Amount:        2000.00,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -406,47 +406,47 @@ func TestTransfer_LedgerBalanceConservation(t *testing.T) {
 	a, _ := accStore.GetByID(context.Background(), idA)
 	b, _ := accStore.GetByID(context.Background(), idB)
 	if a.Balance+b.Balance != initial {
-		t.Errorf("balance not conserved: got %d+%d=%d, want %d",
+		t.Errorf("balance not conserved: got %.2f+%.2f=%.2f, want %.2f",
 			a.Balance, b.Balance, a.Balance+b.Balance, initial)
 	}
 
 	// Ledger must balance: sum(debits) == sum(credits) within the transaction.
-	var debitSum, creditSum int64
+	var debitSum, creditSum float64
 	for _, e := range result.Entries {
 		debitSum += e.DebitAmount
 		creditSum += e.CreditAmount
 	}
 	if debitSum != creditSum {
-		t.Errorf("ledger imbalance: debit=%d credit=%d", debitSum, creditSum)
+		t.Errorf("ledger imbalance: debit=%.2f credit=%.2f", debitSum, creditSum)
 	}
 }
 
 func TestTransfer_BalanceFloor(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 50000, 0)
-	// Set floor to 10000 so effective transferable is only 40000.
+	idA, idB := seedAccounts(t, pool, 500.00, 0)
+	// Set floor to 100.00 so effective transferable is only 400.00.
 	_, err := pool.Exec(context.Background(),
-		`UPDATE accounts SET floor = 10000 WHERE id = $1`, idA)
+		`UPDATE accounts SET floor = 100.00 WHERE id = $1`, idA)
 	if err != nil {
 		t.Fatalf("set floor: %v", err)
 	}
 	svc := newService(pool)
 
-	// Transfer of 45000 would bring balance to 5000, below floor 10000 — must fail.
+	// Transfer of 450.00 would bring balance to 50.00, below floor 100.00 — must fail.
 	_, err = svc.Transfer(context.Background(), transaction.TransferRequest{
-		FromAccountID:  idA,
-		ToAccountID:    idB,
-		AmountSubunits: 45000,
+		FromAccountID: idA,
+		ToAccountID:   idB,
+		Amount:        450.00,
 	})
 	if err == nil {
 		t.Fatal("expected insufficient funds when transfer would breach floor")
 	}
 
-	// Transfer of 40000 is exactly at floor — must succeed.
+	// Transfer of 400.00 is exactly at floor — must succeed.
 	_, err = svc.Transfer(context.Background(), transaction.TransferRequest{
-		FromAccountID:  idA,
-		ToAccountID:    idB,
-		AmountSubunits: 40000,
+		FromAccountID: idA,
+		ToAccountID:   idB,
+		Amount:        400.00,
 	})
 	if err != nil {
 		t.Errorf("expected success at floor boundary, got: %v", err)

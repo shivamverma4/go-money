@@ -10,7 +10,7 @@ const auditEntry: AuditEntry = {
   operation: 'transfer',
   transaction_id: 'aaaa-1111',
   account_ids: [1, 2],
-  amount_subunits: 50000,
+  amount: 500.00,
   amount_display: '₹500.00',
   currency: 'INR',
   outcome: 'success',
@@ -22,7 +22,7 @@ const completedTx: Transaction = {
   id: 'aaaa-1111', type: 'transfer', status: 'completed',
   reference_id: null, reversal_of_id: null,
   from_account_id: 1, to_account_id: 2,
-  amount_subunits: 50000, amount_display: '₹500.00',
+  amount: 500.00, amount_display: '₹500.00',
   currency: 'INR', failure_reason: null, created_at: '',
 }
 

@@ -30,7 +30,7 @@ func testDB(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
-func seedAccounts(t *testing.T, pool *pgxpool.Pool, balanceA, balanceB int64) (int64, int64) {
+func seedAccounts(t *testing.T, pool *pgxpool.Pool, balanceA, balanceB float64) (int64, int64) {
 	t.Helper()
 	ctx := context.Background()
 
@@ -89,13 +89,13 @@ func newReversalService(pool *pgxpool.Pool) *reversal.Service {
 }
 
 // doTransfer is a test helper that runs a transfer and fatals on unexpected error.
-func doTransfer(t *testing.T, pool *pgxpool.Pool, fromID, toID, amount int64) transaction.Transaction {
+func doTransfer(t *testing.T, pool *pgxpool.Pool, fromID, toID int64, amount float64) transaction.Transaction {
 	t.Helper()
 	svc := newTxService(pool)
 	result, err := svc.Transfer(context.Background(), transaction.TransferRequest{
-		FromAccountID:  fromID,
-		ToAccountID:    toID,
-		AmountSubunits: amount,
+		FromAccountID: fromID,
+		ToAccountID:   toID,
+		Amount:        amount,
 	})
 	if err != nil {
 		t.Fatalf("setup transfer failed: %v", err)
@@ -107,8 +107,8 @@ func doTransfer(t *testing.T, pool *pgxpool.Pool, fromID, toID, amount int64) tr
 
 func TestReversal_HappyPath(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100000, 0)
-	orig := doTransfer(t, pool, idA, idB, 50000)
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
+	orig := doTransfer(t, pool, idA, idB, 500.00)
 
 	svc := newReversalService(pool)
 	result, err := svc.Reverse(context.Background(), orig.ID)
@@ -126,11 +126,11 @@ func TestReversal_HappyPath(t *testing.T) {
 	accStore := account.NewStore(pool)
 	a, _ := accStore.GetByID(context.Background(), idA)
 	b, _ := accStore.GetByID(context.Background(), idB)
-	if a.Balance != 100000 {
-		t.Errorf("A balance after reversal: got %d, want 100000", a.Balance)
+	if a.Balance != 1000.00 {
+		t.Errorf("A balance after reversal: got %.2f, want 1000.00", a.Balance)
 	}
 	if b.Balance != 0 {
-		t.Errorf("B balance after reversal: got %d, want 0", b.Balance)
+		t.Errorf("B balance after reversal: got %.2f, want 0", b.Balance)
 	}
 
 	// Original transaction must now be marked reversed.
@@ -143,8 +143,8 @@ func TestReversal_HappyPath(t *testing.T) {
 
 func TestReversal_DoubleReversal(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100000, 0)
-	orig := doTransfer(t, pool, idA, idB, 50000)
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
+	orig := doTransfer(t, pool, idA, idB, 500.00)
 
 	svc := newReversalService(pool)
 	if _, err := svc.Reverse(context.Background(), orig.ID); err != nil {
@@ -160,14 +160,14 @@ func TestReversal_DoubleReversal(t *testing.T) {
 
 func TestReversal_OfFailedTransaction(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100, 0)
+	idA, idB := seedAccounts(t, pool, 1.00, 0)
 	svc := newTxService(pool)
 
 	// This transfer will fail (insufficient funds).
 	result, _ := svc.Transfer(context.Background(), transaction.TransferRequest{
-		FromAccountID:  idA,
-		ToAccountID:    idB,
-		AmountSubunits: 9999,
+		FromAccountID: idA,
+		ToAccountID:   idB,
+		Amount:        99.99,
 	})
 
 	revSvc := newReversalService(pool)
@@ -179,12 +179,12 @@ func TestReversal_OfFailedTransaction(t *testing.T) {
 
 func TestReversal_InsufficientFundsAtDestination(t *testing.T) {
 	pool := testDB(t)
-	// A has 100000, B has 0. Transfer 100000 from A→B, then B spends it all.
-	idA, idB := seedAccounts(t, pool, 100000, 0)
-	orig := doTransfer(t, pool, idA, idB, 100000)
+	// A has 1000.00, B has 0. Transfer 1000.00 from A→B, then B spends it all.
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
+	orig := doTransfer(t, pool, idA, idB, 1000.00)
 
 	// Drain B by transferring back to A.
-	doTransfer(t, pool, idB, idA, 100000)
+	doTransfer(t, pool, idB, idA, 1000.00)
 
 	// Now B has 0 — reversal should fail.
 	svc := newReversalService(pool)
@@ -196,8 +196,8 @@ func TestReversal_InsufficientFundsAtDestination(t *testing.T) {
 
 func TestReversal_Concurrent(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100000, 0)
-	orig := doTransfer(t, pool, idA, idB, 50000)
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
+	orig := doTransfer(t, pool, idA, idB, 500.00)
 
 	svc := newReversalService(pool)
 	const goroutines = 20
@@ -223,12 +223,12 @@ func TestReversal_Concurrent(t *testing.T) {
 		t.Errorf("expected exactly 1 successful reversal, got %d", successes)
 	}
 
-	// Balances must be consistent (A back to 100000, B back to 0).
+	// Balances must be consistent (A back to 1000.00, B back to 0).
 	accStore := account.NewStore(pool)
 	a, _ := accStore.GetByID(context.Background(), idA)
 	b, _ := accStore.GetByID(context.Background(), idB)
-	if a.Balance+b.Balance != 100000 {
-		t.Errorf("total balance not conserved: A=%d B=%d", a.Balance, b.Balance)
+	if a.Balance+b.Balance != 1000.00 {
+		t.Errorf("total balance not conserved: A=%.2f B=%.2f", a.Balance, b.Balance)
 	}
 }
 
@@ -247,8 +247,8 @@ func TestReversal_NotFound(t *testing.T) {
 
 func TestReversal_OfReversal(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100000, 0)
-	orig := doTransfer(t, pool, idA, idB, 50000)
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
+	orig := doTransfer(t, pool, idA, idB, 500.00)
 
 	revSvc := newReversalService(pool)
 	reversal, err := revSvc.Reverse(context.Background(), orig.ID)
@@ -265,8 +265,8 @@ func TestReversal_OfReversal(t *testing.T) {
 
 func TestReversal_AuditLogCreated(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100000, 0)
-	orig := doTransfer(t, pool, idA, idB, 50000)
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
+	orig := doTransfer(t, pool, idA, idB, 500.00)
 
 	svc := newReversalService(pool)
 	result, err := svc.Reverse(context.Background(), orig.ID)
@@ -288,8 +288,8 @@ func TestReversal_AuditLogCreated(t *testing.T) {
 
 func TestReversal_LedgerEntriesBalance(t *testing.T) {
 	pool := testDB(t)
-	const amount = int64(75000)
-	idA, idB := seedAccounts(t, pool, 100000, 0)
+	const amount = float64(750.00)
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
 	orig := doTransfer(t, pool, idA, idB, amount)
 
 	svc := newReversalService(pool)
@@ -301,23 +301,23 @@ func TestReversal_LedgerEntriesBalance(t *testing.T) {
 	if len(result.Entries) != 2 {
 		t.Fatalf("expected 2 ledger entries for reversal, got %d", len(result.Entries))
 	}
-	var debitSum, creditSum int64
+	var debitSum, creditSum float64
 	for _, e := range result.Entries {
 		debitSum += e.DebitAmount
 		creditSum += e.CreditAmount
 	}
 	if debitSum != creditSum {
-		t.Errorf("reversal ledger imbalance: debit=%d credit=%d", debitSum, creditSum)
+		t.Errorf("reversal ledger imbalance: debit=%.2f credit=%.2f", debitSum, creditSum)
 	}
 	if debitSum != amount {
-		t.Errorf("reversal amount mismatch: got %d, want %d", debitSum, amount)
+		t.Errorf("reversal amount mismatch: got %.2f, want %.2f", debitSum, amount)
 	}
 }
 
 func TestReversal_OriginalMarkedReversed(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100000, 0)
-	orig := doTransfer(t, pool, idA, idB, 10000)
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
+	orig := doTransfer(t, pool, idA, idB, 100.00)
 
 	svc := newReversalService(pool)
 	if _, err := svc.Reverse(context.Background(), orig.ID); err != nil {
@@ -336,9 +336,9 @@ func TestReversal_OriginalMarkedReversed(t *testing.T) {
 
 func TestReversal_TotalBalanceConserved(t *testing.T) {
 	pool := testDB(t)
-	const initial = int64(100000)
+	const initial = float64(1000.00)
 	idA, idB := seedAccounts(t, pool, initial, 0)
-	orig := doTransfer(t, pool, idA, idB, 60000)
+	orig := doTransfer(t, pool, idA, idB, 600.00)
 
 	svc := newReversalService(pool)
 	if _, err := svc.Reverse(context.Background(), orig.ID); err != nil {
@@ -349,10 +349,10 @@ func TestReversal_TotalBalanceConserved(t *testing.T) {
 	a, _ := accStore.GetByID(context.Background(), idA)
 	b, _ := accStore.GetByID(context.Background(), idB)
 	if a.Balance+b.Balance != initial {
-		t.Errorf("balance not conserved after reversal: A=%d B=%d sum=%d want=%d",
+		t.Errorf("balance not conserved after reversal: A=%.2f B=%.2f sum=%.2f want=%.2f",
 			a.Balance, b.Balance, a.Balance+b.Balance, initial)
 	}
 	if a.Balance != initial {
-		t.Errorf("A not fully restored: got %d, want %d", a.Balance, initial)
+		t.Errorf("A not fully restored: got %.2f, want %.2f", a.Balance, initial)
 	}
 }

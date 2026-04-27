@@ -64,8 +64,8 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	out := make([]response, len(logs))
 	for i, l := range logs {
 		var display *string
-		if l.AmountSubunits != nil {
-			s := fmt.Sprintf("%s%.2f", h.currency.Symbol, float64(*l.AmountSubunits)/100)
+		if l.Amount != nil {
+			s := fmt.Sprintf("%s%.2f", h.currency.Symbol, *l.Amount)
 			display = &s
 		}
 		out[i] = response{Log: l, AmountDisplay: display, Currency: h.currency.Code}

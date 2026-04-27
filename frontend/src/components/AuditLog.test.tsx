@@ -11,7 +11,7 @@ function makeEntry(overrides: Partial<AuditEntry> = {}): AuditEntry {
     operation: 'transfer',
     transaction_id: 'uuid-1',
     account_ids: [1, 2],
-    amount_subunits: 50000,
+    amount: 500.00,
     amount_display: '₹500.00',
     currency: 'INR',
     outcome: 'success',

@@ -18,8 +18,8 @@ CREATE TABLE accounts (
     id          BIGSERIAL      PRIMARY KEY,
     customer_id BIGINT         NOT NULL REFERENCES customers(id),
     currency    CHAR(3)        NOT NULL DEFAULT 'INR',
-    balance     BIGINT         NOT NULL DEFAULT 0,
-    floor       BIGINT         NOT NULL DEFAULT 0,
+    balance     NUMERIC(15,2)  NOT NULL DEFAULT 0.00,
+    floor       NUMERIC(15,2)  NOT NULL DEFAULT 0.00,
     status      account_status NOT NULL DEFAULT 'active',
     created_at  TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ    NOT NULL DEFAULT NOW()
@@ -36,23 +36,23 @@ CREATE TABLE transactions (
 );
 
 CREATE TABLE ledger_entries (
-    id             BIGSERIAL   PRIMARY KEY,
-    transaction_id UUID        NOT NULL REFERENCES transactions(id),
-    account_id     BIGINT      NOT NULL REFERENCES accounts(id),
-    debit_amount   BIGINT      NOT NULL DEFAULT 0 CHECK (debit_amount  >= 0),
-    credit_amount  BIGINT      NOT NULL DEFAULT 0 CHECK (credit_amount >= 0),
-    entry_date     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id             BIGSERIAL     PRIMARY KEY,
+    transaction_id UUID          NOT NULL REFERENCES transactions(id),
+    account_id     BIGINT        NOT NULL REFERENCES accounts(id),
+    debit_amount   NUMERIC(15,2) NOT NULL DEFAULT 0.00 CHECK (debit_amount  >= 0),
+    credit_amount  NUMERIC(15,2) NOT NULL DEFAULT 0.00 CHECK (credit_amount >= 0),
+    entry_date     TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE audit_log (
-    id              BIGSERIAL        PRIMARY KEY,
-    operation       transaction_type NOT NULL,
-    transaction_id  UUID             REFERENCES transactions(id),
-    account_ids     BIGINT[],
-    amount_subunits BIGINT,
-    outcome         audit_outcome    NOT NULL,
-    failure_reason  TEXT,
-    created_at      TIMESTAMPTZ      NOT NULL DEFAULT NOW()
+    id             BIGSERIAL        PRIMARY KEY,
+    operation      transaction_type NOT NULL,
+    transaction_id UUID             REFERENCES transactions(id),
+    account_ids    BIGINT[],
+    amount         NUMERIC(15,2),
+    outcome        audit_outcome    NOT NULL,
+    failure_reason TEXT,
+    created_at     TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_accounts_customer  ON accounts(customer_id);

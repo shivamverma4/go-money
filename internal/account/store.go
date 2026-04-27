@@ -80,7 +80,7 @@ func (s *Store) ListByCustomer(ctx context.Context, customerID int64) ([]Account
 	return accounts, rows.Err()
 }
 
-func (s *Store) Create(ctx context.Context, customerID int64, currency string, initialBalance int64) (Account, error) {
+func (s *Store) Create(ctx context.Context, customerID int64, currency string, initialBalance float64) (Account, error) {
 	a, err := scan(s.db.QueryRow(ctx,
 		`INSERT INTO accounts (customer_id, currency, balance)
 		 VALUES ($1, $2, $3)
@@ -94,7 +94,7 @@ func (s *Store) Create(ctx context.Context, customerID int64, currency string, i
 }
 
 // UpdateBalance applies a signed delta to balance within an existing transaction.
-func (s *Store) UpdateBalance(ctx context.Context, tx pgx.Tx, id, delta int64) error {
+func (s *Store) UpdateBalance(ctx context.Context, tx pgx.Tx, id int64, delta float64) error {
 	_, err := tx.Exec(ctx,
 		`UPDATE accounts SET balance = balance + $1, updated_at = NOW() WHERE id = $2`,
 		delta, id,

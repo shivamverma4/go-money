@@ -57,8 +57,8 @@ func TestReversalHandler_NotFound(t *testing.T) {
 
 func TestReversalHandler_HappyPath(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100000, 0)
-	orig := doTransfer(t, pool, idA, idB, 50000)
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
+	orig := doTransfer(t, pool, idA, idB, 500.00)
 
 	svc := newReversalService(pool)
 	h := reversal.NewHandler(svc, testCurrency)
@@ -77,8 +77,8 @@ func TestReversalHandler_HappyPath(t *testing.T) {
 
 func TestReversalHandler_HappyPath_ResponseShape(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100000, 0)
-	orig := doTransfer(t, pool, idA, idB, 30000)
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
+	orig := doTransfer(t, pool, idA, idB, 300.00)
 
 	svc := newReversalService(pool)
 	h := reversal.NewHandler(svc, testCurrency)
@@ -113,8 +113,8 @@ func TestReversalHandler_HappyPath_ResponseShape(t *testing.T) {
 
 func TestReversalHandler_AlreadyReversed(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100000, 0)
-	orig := doTransfer(t, pool, idA, idB, 50000)
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
+	orig := doTransfer(t, pool, idA, idB, 500.00)
 
 	svc := newReversalService(pool)
 	// First reversal succeeds.
@@ -139,8 +139,8 @@ func TestReversalHandler_AlreadyReversed(t *testing.T) {
 
 func TestReversalHandler_ReversalOfReversal(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100000, 0)
-	orig := doTransfer(t, pool, idA, idB, 50000)
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
+	orig := doTransfer(t, pool, idA, idB, 500.00)
 
 	svc := newReversalService(pool)
 	rev, err := svc.Reverse(context.Background(), orig.ID)
@@ -165,13 +165,13 @@ func TestReversalHandler_ReversalOfReversal(t *testing.T) {
 
 func TestReversalHandler_FailedTransaction(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100, 0)
+	idA, idB := seedAccounts(t, pool, 1.00, 0)
 
 	// This transfer will fail (insufficient funds).
 	result, _ := newTxService(pool).Transfer(context.Background(), transaction.TransferRequest{
-		FromAccountID:  idA,
-		ToAccountID:    idB,
-		AmountSubunits: 9999,
+		FromAccountID: idA,
+		ToAccountID:   idB,
+		Amount:        99.99,
 	})
 
 	svc := newReversalService(pool)
@@ -192,11 +192,11 @@ func TestReversalHandler_FailedTransaction(t *testing.T) {
 
 func TestReversalHandler_InsufficientFundsAtDestination(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100000, 0)
-	orig := doTransfer(t, pool, idA, idB, 100000)
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
+	orig := doTransfer(t, pool, idA, idB, 1000.00)
 
 	// Drain B so the reversal cannot pull funds back.
-	doTransfer(t, pool, idB, idA, 100000)
+	doTransfer(t, pool, idB, idA, 1000.00)
 
 	svc := newReversalService(pool)
 	h := reversal.NewHandler(svc, testCurrency)

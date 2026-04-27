@@ -24,7 +24,7 @@ var testCurrency = config.Currency{Code: "INR", Symbol: "₹", SubunitName: "pai
 func newTestRouter(t *testing.T) (http.Handler, int64, int64) {
 	t.Helper()
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 500000, 0)
+	idA, idB := seedAccounts(t, pool, 5000.00, 0)
 
 	svc := transaction.NewService(
 		pool,
@@ -96,7 +96,7 @@ func TestTransactionHandler_Create_Success(t *testing.T) {
 	body, _ := json.Marshal(map[string]any{
 		"from_account_id": idA,
 		"to_account_id":   idB,
-		"amount_subunits": 10000,
+		"amount":          100.00,
 	})
 	req := httptest.NewRequest(http.MethodPost, "/transactions", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -120,7 +120,7 @@ func TestTransactionHandler_Create_InsufficientFunds(t *testing.T) {
 	body, _ := json.Marshal(map[string]any{
 		"from_account_id": idA,
 		"to_account_id":   idB,
-		"amount_subunits": 999999999, // way more than balance
+		"amount":          9999999.99, // way more than balance
 	})
 	req := httptest.NewRequest(http.MethodPost, "/transactions", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -138,7 +138,7 @@ func TestTransactionHandler_Create_SameAccount(t *testing.T) {
 	body, _ := json.Marshal(map[string]any{
 		"from_account_id": idA,
 		"to_account_id":   idA,
-		"amount_subunits": 100,
+		"amount":          1.00,
 	})
 	req := httptest.NewRequest(http.MethodPost, "/transactions", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -156,7 +156,7 @@ func TestTransactionHandler_Create_ZeroAmount(t *testing.T) {
 	body, _ := json.Marshal(map[string]any{
 		"from_account_id": idA,
 		"to_account_id":   idB,
-		"amount_subunits": 0,
+		"amount":          0,
 	})
 	req := httptest.NewRequest(http.MethodPost, "/transactions", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -197,12 +197,12 @@ func TestTransactionHandler_Get_NotFound(t *testing.T) {
 
 func TestTransactionHandler_Get_Success(t *testing.T) {
 	pool := testDB(t)
-	idA, idB := seedAccounts(t, pool, 100000, 0)
+	idA, idB := seedAccounts(t, pool, 1000.00, 0)
 	svc := newService(pool)
 	result, err := svc.Transfer(context.Background(), transaction.TransferRequest{
-		FromAccountID:  idA,
-		ToAccountID:    idB,
-		AmountSubunits: 5000,
+		FromAccountID: idA,
+		ToAccountID:   idB,
+		Amount:        50.00,
 	})
 	if err != nil {
 		t.Fatalf("setup transfer: %v", err)

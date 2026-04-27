@@ -15,10 +15,10 @@ import (
 )
 
 type TransferRequest struct {
-	FromAccountID  int64
-	ToAccountID    int64
-	AmountSubunits int64
-	ReferenceID    *string
+	FromAccountID int64
+	ToAccountID   int64
+	Amount        float64
+	ReferenceID   *string
 }
 
 type TransferResult struct {
@@ -51,7 +51,7 @@ func NewService(
 }
 
 func (s *Service) Transfer(ctx context.Context, req TransferRequest) (TransferResult, error) {
-	if req.AmountSubunits <= 0 {
+	if req.Amount <= 0 {
 		return s.recordFailure(ctx, req, "amount must be greater than zero", "INVALID_AMOUNT")
 	}
 	if req.FromAccountID == req.ToAccountID {
@@ -96,14 +96,14 @@ func (s *Service) Transfer(ctx context.Context, req TransferRequest) (TransferRe
 		if fromAcc.Currency != toAcc.Currency {
 			return &validationError{msg: "accounts have different currencies", code: "CURRENCY_MISMATCH"}
 		}
-		if fromAcc.Balance-req.AmountSubunits < fromAcc.Floor {
+		if fromAcc.Balance-req.Amount < fromAcc.Floor {
 			return &validationError{msg: "insufficient funds", code: "INSUFFICIENT_FUNDS"}
 		}
 
-		if err := s.accountStore.UpdateBalance(ctx, tx, req.FromAccountID, -req.AmountSubunits); err != nil {
+		if err := s.accountStore.UpdateBalance(ctx, tx, req.FromAccountID, -req.Amount); err != nil {
 			return err
 		}
-		if err := s.accountStore.UpdateBalance(ctx, tx, req.ToAccountID, req.AmountSubunits); err != nil {
+		if err := s.accountStore.UpdateBalance(ctx, tx, req.ToAccountID, req.Amount); err != nil {
 			return err
 		}
 
@@ -116,8 +116,8 @@ func (s *Service) Transfer(ctx context.Context, req TransferRequest) (TransferRe
 			return err
 		}
 
-		debitEntry := ledger.Entry{TransactionID: created.ID, AccountID: req.FromAccountID, DebitAmount: req.AmountSubunits}
-		creditEntry := ledger.Entry{TransactionID: created.ID, AccountID: req.ToAccountID, CreditAmount: req.AmountSubunits}
+		debitEntry := ledger.Entry{TransactionID: created.ID, AccountID: req.FromAccountID, DebitAmount: req.Amount}
+		creditEntry := ledger.Entry{TransactionID: created.ID, AccountID: req.ToAccountID, CreditAmount: req.Amount}
 		if err := s.ledgerStore.InsertEntry(ctx, tx, debitEntry); err != nil {
 			return err
 		}
@@ -126,12 +126,12 @@ func (s *Service) Transfer(ctx context.Context, req TransferRequest) (TransferRe
 		}
 
 		txID := created.ID
-		amt := req.AmountSubunits
+		amt := req.Amount
 		if err := s.auditStore.Insert(ctx, tx, audit.Log{
 			Operation:      TypeTransfer,
 			TransactionID:  &txID,
 			AccountIDs:     []int64{req.FromAccountID, req.ToAccountID},
-			AmountSubunits: &amt,
+			Amount: &amt,
 			Outcome:        audit.OutcomeSuccess,
 		}); err != nil {
 			return err
@@ -175,13 +175,13 @@ func (s *Service) recordFailure(ctx context.Context, req TransferRequest, reason
 		if req.ToAccountID != 0 {
 			accountIDs = append(accountIDs, req.ToAccountID)
 		}
-		amt := req.AmountSubunits
+		amt := req.Amount
 		txID := created.ID
 		return s.auditStore.Insert(ctx, tx, audit.Log{
 			Operation:      TypeTransfer,
 			TransactionID:  &txID,
 			AccountIDs:     accountIDs,
-			AmountSubunits: &amt,
+			Amount: &amt,
 			Outcome:        audit.OutcomeFailure,
 			FailureReason:  &r,
 		})

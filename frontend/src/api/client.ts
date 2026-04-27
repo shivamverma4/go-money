@@ -36,7 +36,7 @@ export interface Account {
   id: number
   customer_id: number
   currency: string
-  balance_subunits: number
+  balance: number
   balance_display: string
   status: 'active' | 'inactive' | 'closed'
 }
@@ -58,7 +58,7 @@ export interface Transaction {
   reversal_of_id: string | null
   from_account_id: number | null
   to_account_id: number | null
-  amount_subunits: number | null
+  amount: number | null
   amount_display: string | null
   currency: string | null
   failure_reason: string | null
@@ -71,7 +71,7 @@ export interface AuditEntry {
   operation: string
   transaction_id: string | null
   account_ids: number[] | null
-  amount_subunits: number | null
+  amount: number | null
   amount_display: string | null
   currency: string
   outcome: 'success' | 'failure'
@@ -100,14 +100,14 @@ export const listTransactions = (params?: { limit?: number; offset?: number }) =
 export const createTransfer = (
   fromAccountId: number,
   toAccountId: number,
-  amountSubunits: number,
+  amount: number,
 ) =>
   request<Transaction>('/transactions', {
     method: 'POST',
     body: JSON.stringify({
       from_account_id: fromAccountId,
       to_account_id: toAccountId,
-      amount_subunits: amountSubunits,
+      amount,
     }),
   })
 

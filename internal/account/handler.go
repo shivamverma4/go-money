@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 
@@ -65,9 +66,9 @@ func (h *Handler) ListByCustomer(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		CustomerID     int64  `json:"customer_id"`
-		Currency       string `json:"currency"`
-		InitialBalance int64  `json:"initial_balance_subunits"`
+		CustomerID     int64   `json:"customer_id"`
+		Currency       string  `json:"currency"`
+		InitialBalance float64 `json:"initial_balance"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body", "INVALID_BODY")
@@ -81,7 +82,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		req.Currency = h.currency.Code
 	}
 	if req.InitialBalance < 0 {
-		writeError(w, http.StatusBadRequest, "initial_balance_subunits must be >= 0", "INVALID_AMOUNT")
+		writeError(w, http.StatusBadRequest, "initial_balance must be >= 0", "INVALID_AMOUNT")
 		return
 	}
 	a, err := h.store.Create(r.Context(), req.CustomerID, req.Currency, req.InitialBalance)
@@ -94,22 +95,22 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 // Response shape returned to callers.
 type Response struct {
-	ID             int64  `json:"id"`
-	CustomerID     int64  `json:"customer_id"`
-	Currency       string `json:"currency"`
-	BalanceSubunits int64 `json:"balance_subunits"`
-	BalanceDisplay string `json:"balance_display"`
-	Status         Status `json:"status"`
+	ID             int64   `json:"id"`
+	CustomerID     int64   `json:"customer_id"`
+	Currency       string  `json:"currency"`
+	Balance        float64 `json:"balance"`
+	BalanceDisplay string  `json:"balance_display"`
+	Status         Status  `json:"status"`
 }
 
 func (h *Handler) toResponse(a Account) Response {
 	return Response{
-		ID:              a.ID,
-		CustomerID:      a.CustomerID,
-		Currency:        a.Currency,
-		BalanceSubunits: a.Balance,
-		BalanceDisplay:  formatAmount(a.Balance, h.currency.Symbol),
-		Status:          a.Status,
+		ID:             a.ID,
+		CustomerID:     a.CustomerID,
+		Currency:       a.Currency,
+		Balance:        a.Balance,
+		BalanceDisplay: formatAmount(a.Balance, h.currency.Symbol),
+		Status:         a.Status,
 	}
 }
 
@@ -121,11 +122,11 @@ func (h *Handler) toResponses(accounts []Account) []Response {
 	return out
 }
 
-// formatAmount converts subunits to a display string, e.g. 100050 → "₹1,000.50"
-func formatAmount(subunits int64, symbol string) string {
-	rupees := subunits / 100
-	paise := subunits % 100
-	return fmt.Sprintf("%s%s.%02d", symbol, formatWithCommas(rupees), paise)
+// formatAmount formats a rupee value with Indian comma notation, e.g. 1000.50 → "₹1,000.50"
+func formatAmount(rupees float64, symbol string) string {
+	whole := int64(rupees)
+	frac := int64(math.Round((rupees-float64(whole))*100))
+	return fmt.Sprintf("%s%s.%02d", symbol, formatWithCommas(whole), frac)
 }
 
 func formatWithCommas(n int64) string {

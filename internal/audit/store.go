@@ -20,10 +20,10 @@ func NewStore(db *pgxpool.Pool) *Store {
 
 func (s *Store) Insert(ctx context.Context, tx pgx.Tx, entry Log) error {
 	_, err := tx.Exec(ctx,
-		`INSERT INTO audit_log (operation, transaction_id, account_ids, amount_subunits, outcome, failure_reason)
+		`INSERT INTO audit_log (operation, transaction_id, account_ids, amount, outcome, failure_reason)
 		 VALUES ($1, $2, $3, $4, $5, $6)`,
 		entry.Operation, entry.TransactionID, entry.AccountIDs,
-		entry.AmountSubunits, entry.Outcome, entry.FailureReason,
+		entry.Amount, entry.Outcome, entry.FailureReason,
 	)
 	if err != nil {
 		return fmt.Errorf("insert audit log: %w", err)
@@ -65,7 +65,7 @@ func (s *Store) List(ctx context.Context, f Filters) ([]Log, error) {
 		limit = f.Limit
 	}
 
-	query := `SELECT id, operation, transaction_id, account_ids, amount_subunits, outcome, failure_reason, created_at
+	query := `SELECT id, operation, transaction_id, account_ids, amount, outcome, failure_reason, created_at
 		FROM audit_log WHERE ` + strings.Join(where, " AND ") +
 		` ORDER BY created_at DESC LIMIT ` + strconv.Itoa(limit) +
 		` OFFSET ` + strconv.Itoa(f.Offset)
@@ -80,7 +80,7 @@ func (s *Store) List(ctx context.Context, f Filters) ([]Log, error) {
 	for rows.Next() {
 		var l Log
 		if err := rows.Scan(&l.ID, &l.Operation, &l.TransactionID, &l.AccountIDs,
-			&l.AmountSubunits, &l.Outcome, &l.FailureReason, &l.CreatedAt); err != nil {
+			&l.Amount, &l.Outcome, &l.FailureReason, &l.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan audit log: %w", err)
 		}
 		logs = append(logs, l)

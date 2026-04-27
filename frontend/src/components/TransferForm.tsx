@@ -38,7 +38,7 @@ export function TransferForm({ accounts, customers, refreshKey, onSuccess }: Pro
     setError(null)
     setSuccess(null)
 
-    const amountNum = Math.round(parseFloat(amount) * 100)
+    const amountNum = parseFloat(amount)
     if (isNaN(amountNum) || amountNum <= 0) {
       setError('Enter a valid amount greater than 0')
       return

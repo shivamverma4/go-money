@@ -9,7 +9,7 @@ const mockCustomers: Customer[] = [
 ]
 
 const mockAccounts: Account[] = [
-  { id: 1, customer_id: 1, currency: 'INR', balance_subunits: 100000, balance_display: '₹1,000.00', status: 'active' },
+  { id: 1, customer_id: 1, currency: 'INR', balance: 1000.00, balance_display: '₹1,000.00', status: 'active' },
 ]
 
 const mockAudit: AuditEntry[] = []
@@ -72,7 +72,7 @@ describe('App', () => {
       id: 'tx-1', type: 'transfer', status: 'completed',
       reference_id: null, reversal_of_id: null,
       from_account_id: 1, to_account_id: 1,
-      amount_subunits: 1000, amount_display: '₹10.00',
+      amount: 10.00, amount_display: '₹10.00',
       currency: 'INR', failure_reason: null, created_at: '',
     })
 

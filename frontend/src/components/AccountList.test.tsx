@@ -9,9 +9,9 @@ const customers: Map<number, Customer> = new Map([
 ])
 
 const accounts: Account[] = [
-  { id: 1, customer_id: 1, currency: 'INR', balance_subunits: 1000000, balance_display: '₹10,000.00', status: 'active' },
-  { id: 2, customer_id: 2, currency: 'INR', balance_subunits: 500000,  balance_display: '₹5,000.00',  status: 'active' },
-  { id: 3, customer_id: 3, currency: 'INR', balance_subunits: 0,       balance_display: '₹0.00',       status: 'inactive' },
+  { id: 1, customer_id: 1, currency: 'INR', balance: 10000.00, balance_display: '₹10,000.00', status: 'active' },
+  { id: 2, customer_id: 2, currency: 'INR', balance: 5000.00,  balance_display: '₹5,000.00',  status: 'active' },
+  { id: 3, customer_id: 3, currency: 'INR', balance: 0,       balance_display: '₹0.00',       status: 'inactive' },
 ]
 
 describe('AccountList', () => {

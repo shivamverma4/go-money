@@ -123,7 +123,7 @@ func TestAccountHandler_Get_Success(t *testing.T) {
 	custID := seedCustomer(t, pool)
 
 	store := account.NewStore(pool)
-	a, err := store.Create(context.Background(), custID, "INR", 50000)
+	a, err := store.Create(context.Background(), custID, "INR", 500.00)
 	if err != nil {
 		t.Fatalf("create account: %v", err)
 	}
@@ -164,8 +164,8 @@ func TestAccountHandler_Create_InvalidJSON(t *testing.T) {
 func TestAccountHandler_Create_MissingCustomerID(t *testing.T) {
 	r, _ := newAccountRouter(t)
 	body, _ := json.Marshal(map[string]any{
-		"currency":               "INR",
-		"initial_balance_subunits": 1000,
+		"currency":        "INR",
+		"initial_balance": 10.00,
 	})
 	req := httptest.NewRequest(http.MethodPost, "/accounts", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -183,9 +183,9 @@ func TestAccountHandler_Create_NegativeBalance(t *testing.T) {
 	custID := seedCustomer(t, pool)
 
 	body, _ := json.Marshal(map[string]any{
-		"customer_id":              custID,
-		"currency":                "INR",
-		"initial_balance_subunits": -100,
+		"customer_id":     custID,
+		"currency":        "INR",
+		"initial_balance": -1.00,
 	})
 	req := httptest.NewRequest(http.MethodPost, "/accounts", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -203,9 +203,9 @@ func TestAccountHandler_Create_Success(t *testing.T) {
 	custID := seedCustomer(t, pool)
 
 	body, _ := json.Marshal(map[string]any{
-		"customer_id":              custID,
-		"currency":                "INR",
-		"initial_balance_subunits": 100000,
+		"customer_id":     custID,
+		"currency":        "INR",
+		"initial_balance": 1000.00,
 	})
 	req := httptest.NewRequest(http.MethodPost, "/accounts", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -271,8 +271,8 @@ func TestAccountHandler_ListByCustomer_Success(t *testing.T) {
 	custID := seedCustomer(t, pool)
 
 	store := account.NewStore(pool)
-	store.Create(context.Background(), custID, "INR", 10000)
-	store.Create(context.Background(), custID, "INR", 20000)
+	store.Create(context.Background(), custID, "INR", 100.00)
+	store.Create(context.Background(), custID, "INR", 200.00)
 
 	req := httptest.NewRequest(http.MethodGet,
 		"/customers/"+itoa(custID)+"/accounts", nil)

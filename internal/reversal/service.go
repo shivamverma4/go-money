@@ -70,7 +70,7 @@ func (s *Service) Reverse(ctx context.Context, originalID uuid.UUID) (Result, er
 			return fmt.Errorf("fetch original entries: %w", err)
 		}
 		var fromID, toID int64
-		var amount int64
+		var amount float64
 		for _, e := range entries {
 			if e.DebitAmount > 0 {
 				fromID = e.AccountID
@@ -140,11 +140,11 @@ func (s *Service) Reverse(ctx context.Context, originalID uuid.UUID) (Result, er
 
 		reversalTxID := reversalTx.ID
 		if err := s.auditStore.Insert(ctx, tx, audit.Log{
-			Operation:      transaction.TypeReversal,
-			TransactionID:  &reversalTxID,
-			AccountIDs:     []int64{origFrom.ID, origTo.ID},
-			AmountSubunits: &amount,
-			Outcome:        audit.OutcomeSuccess,
+			Operation:     transaction.TypeReversal,
+			TransactionID: &reversalTxID,
+			AccountIDs:    []int64{origFrom.ID, origTo.ID},
+			Amount:        &amount,
+			Outcome:       audit.OutcomeSuccess,
 		}); err != nil {
 			return err
 		}

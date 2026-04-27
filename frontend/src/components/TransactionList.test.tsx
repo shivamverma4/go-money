@@ -9,7 +9,7 @@ const transfer: Transaction = {
   id: 'aaaa-1111', type: 'transfer', status: 'completed',
   reference_id: null, reversal_of_id: null,
   from_account_id: 1, to_account_id: 2,
-  amount_subunits: 50000, amount_display: '₹500.00',
+  amount: 50000, amount_display: '₹500.00',
   currency: 'INR', failure_reason: null, created_at: '',
 }
 
@@ -17,7 +17,7 @@ const reversalTx: Transaction = {
   id: 'bbbb-2222', type: 'reversal', status: 'completed',
   reference_id: null, reversal_of_id: 'aaaa-1111',
   from_account_id: 2, to_account_id: 1,
-  amount_subunits: 50000, amount_display: '₹500.00',
+  amount: 50000, amount_display: '₹500.00',
   currency: 'INR', failure_reason: null, created_at: '',
 }
 

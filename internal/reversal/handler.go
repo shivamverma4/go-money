@@ -38,30 +38,30 @@ func (h *Handler) Reverse(w http.ResponseWriter, r *http.Request) {
 }
 
 type reversalResponse struct {
-	ID             uuid.UUID          `json:"id"`
-	Type           transaction.Type   `json:"type"`
-	Status         transaction.Status `json:"status"`
-	ReversalOfID   *uuid.UUID         `json:"reversal_of_id"`
-	AmountSubunits int64              `json:"amount_subunits"`
-	AmountDisplay  string             `json:"amount_display"`
-	Currency       string             `json:"currency"`
+	ID            uuid.UUID          `json:"id"`
+	Type          transaction.Type   `json:"type"`
+	Status        transaction.Status `json:"status"`
+	ReversalOfID  *uuid.UUID         `json:"reversal_of_id"`
+	Amount        float64            `json:"amount"`
+	AmountDisplay string             `json:"amount_display"`
+	Currency      string             `json:"currency"`
 }
 
 func (h *Handler) toResponse(r Result) reversalResponse {
-	var amount int64
+	var amount float64
 	for _, e := range r.Entries {
 		if e.DebitAmount > 0 {
 			amount = e.DebitAmount
 		}
 	}
 	return reversalResponse{
-		ID:             r.Transaction.ID,
-		Type:           r.Transaction.Type,
-		Status:         r.Transaction.Status,
-		ReversalOfID:   r.Transaction.ReversalOfID,
-		AmountSubunits: amount,
-		AmountDisplay:  fmt.Sprintf("%s%.2f", h.currency.Symbol, float64(amount)/100),
-		Currency:       h.currency.Code,
+		ID:            r.Transaction.ID,
+		Type:          r.Transaction.Type,
+		Status:        r.Transaction.Status,
+		ReversalOfID:  r.Transaction.ReversalOfID,
+		Amount:        amount,
+		AmountDisplay: fmt.Sprintf("%s%.2f", h.currency.Symbol, amount),
+		Currency:      h.currency.Code,
 	}
 }
 

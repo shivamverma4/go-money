@@ -27,10 +27,10 @@ func NewHandler(service *Service, store *Store, currency config.Currency) *Handl
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		FromAccountID  int64   `json:"from_account_id"`
-		ToAccountID    int64   `json:"to_account_id"`
-		AmountSubunits int64   `json:"amount_subunits"`
-		ReferenceID    *string `json:"reference_id"`
+		FromAccountID int64   `json:"from_account_id"`
+		ToAccountID   int64   `json:"to_account_id"`
+		Amount        float64 `json:"amount"`
+		ReferenceID   *string `json:"reference_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body", "INVALID_BODY")
@@ -38,10 +38,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result, err := h.service.Transfer(r.Context(), TransferRequest{
-		FromAccountID:  req.FromAccountID,
-		ToAccountID:    req.ToAccountID,
-		AmountSubunits: req.AmountSubunits,
-		ReferenceID:    req.ReferenceID,
+		FromAccountID: req.FromAccountID,
+		ToAccountID:   req.ToAccountID,
+		Amount:        req.Amount,
+		ReferenceID:   req.ReferenceID,
 	})
 
 	if err != nil {
@@ -107,18 +107,18 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 type transactionResponse struct {
-	ID             uuid.UUID      `json:"id"`
-	Type           Type           `json:"type"`
-	Status         Status         `json:"status"`
-	ReferenceID    *string        `json:"reference_id"`
-	ReversalOfID   *uuid.UUID     `json:"reversal_of_id"`
-	FromAccountID  *int64         `json:"from_account_id"`
-	ToAccountID    *int64         `json:"to_account_id"`
-	AmountSubunits *int64         `json:"amount_subunits"`
-	AmountDisplay  *string        `json:"amount_display"`
-	Currency       *string        `json:"currency"`
-	FailureReason  *string        `json:"failure_reason"`
-	LedgerEntries  []ledger.Entry `json:"ledger_entries,omitempty"`
+	ID            uuid.UUID      `json:"id"`
+	Type          Type           `json:"type"`
+	Status        Status         `json:"status"`
+	ReferenceID   *string        `json:"reference_id"`
+	ReversalOfID  *uuid.UUID     `json:"reversal_of_id"`
+	FromAccountID *int64         `json:"from_account_id"`
+	ToAccountID   *int64         `json:"to_account_id"`
+	Amount        *float64       `json:"amount"`
+	AmountDisplay *string        `json:"amount_display"`
+	Currency      *string        `json:"currency"`
+	FailureReason *string        `json:"failure_reason"`
+	LedgerEntries []ledger.Entry `json:"ledger_entries,omitempty"`
 }
 
 func (h *Handler) toResponse(tx Transaction, entries []ledger.Entry) transactionResponse {
@@ -136,8 +136,9 @@ func (h *Handler) toResponse(tx Transaction, entries []ledger.Entry) transaction
 	for _, e := range entries {
 		if e.DebitAmount > 0 {
 			id := e.AccountID
+			amt := e.DebitAmount
 			resp.FromAccountID = &id
-			resp.AmountSubunits = &e.DebitAmount
+			resp.Amount = &amt
 			display := formatAmount(e.DebitAmount, h.currency.Symbol)
 			resp.AmountDisplay = &display
 			cur := h.currency.Code
@@ -152,8 +153,8 @@ func (h *Handler) toResponse(tx Transaction, entries []ledger.Entry) transaction
 	return resp
 }
 
-func formatAmount(subunits int64, symbol string) string {
-	return fmt.Sprintf("%s%.2f", symbol, float64(subunits)/100)
+func formatAmount(rupees float64, symbol string) string {
+	return fmt.Sprintf("%s%.2f", symbol, rupees)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
