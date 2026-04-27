@@ -1,0 +1,11 @@
+.env
+.git
+.gitignore
+*.md
+PLAN.md
+CLAUDE.md
+doc.md
+frontend/node_modules
+frontend/dist
+tmp/
+*.test
